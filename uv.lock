@@ -42,6 +42,9 @@ wheels = [
 name = "poker"
 version = "1.0.0"
 source = { editable = "." }
+dependencies = [
+    { name = "pokerkit" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -50,12 +53,18 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "pokerkit", git = "https://github.com/sagnikc395/pokerkit.git" }]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.8" },
 ]
+
+[[package]]
+name = "pokerkit"
+version = "0.7.4"
+source = { git = "https://github.com/sagnikc395/pokerkit.git#5841c0afe4d6eb71ae5db0f8a6a376ee3e329afb" }
 
 [[package]]
 name = "pygments"

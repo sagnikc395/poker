@@ -61,7 +61,7 @@ def test_five_card_category_counts_on_reduced_deck():
         counts[category(evaluate_five(hand))] += 1
     assert sum(counts.values()) == 15504
     assert counts[HandCategory.STRAIGHT_FLUSH] == 4
-    assert counts[HandCategory.FOUR_OF_A_KIND] == 5 * 4 * 16
+    assert counts[HandCategory.FOUR_OF_A_KIND] == 5 * 16
     assert counts[HandCategory.FULL_HOUSE] == 5 * 4 * 4 * 6
     assert counts[HandCategory.STRAIGHT] == 4**5 - 4
     assert counts[HandCategory.FLUSH] == 0  # only one 5-rank flush per suit: the straight flush

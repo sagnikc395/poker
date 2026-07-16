@@ -1,9 +1,4 @@
-"""Card primitives: ranks, suits, and the standard 52-card deck.
-
-A card is a 2-character string: rank + suit, e.g. ``"As"`` (ace of spades).
-"""
-
-from __future__ import annotations
+"""Card primitives: ranks, suits, and the standard 52-card deck."""
 
 RANKS = "23456789TJQKA"
 SUITS = "shcd"

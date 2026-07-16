@@ -1,7 +1,5 @@
 """Monte Carlo equity estimation against ranged opponents."""
 
-from __future__ import annotations
-
 import random
 from collections.abc import Sequence
 
@@ -54,7 +52,8 @@ def simulate_equity(
         best_opponent: tuple[int, ...] | None = None
         for cutoff in cutoffs:
             candidates = [
-                hand for hand in PREFLOP_HANDS[:cutoff]
+                hand
+                for hand in PREFLOP_HANDS[:cutoff]
                 if hand[0] in available and hand[1] in available
             ]
             hand = rng.choice(candidates)

@@ -1,20 +1,11 @@
-"""Texas Hold 'em game engine.
-
-The engine is UI-agnostic: it drives dealing, betting rounds, and showdowns,
-and delegates all presentation and input to a :class:`GameUI` implementation.
-
-Known limitation carried over from the original implementation: side pots are
-not modeled, and a split pot discards the indivisible remainder.
-"""
-
-from __future__ import annotations
+"""Texas Hold 'em game engine."""
 
 import random
 from dataclasses import dataclass
 from typing import Protocol
 
 from .cards import DECK
-from .evaluation import best_hand, category
+from .evaluation import best_hand
 from .player import Player
 
 STREETS = (("Flop", 3), ("Turn", 1), ("River", 1))
@@ -134,7 +125,9 @@ class TexasHoldem:
             n_round += 1
             open_bets = [
                 bet
-                for bet, player, folded, was_all_in in zip(self.bets, self.players, self.folds, all_in)
+                for bet, player, folded, was_all_in in zip(
+                    self.bets, self.players, self.folds, all_in, strict=True
+                )
                 if not (folded or was_all_in or not (bet or player.chips))
             ]
             all_in = [p.chips == 0 for p in self.players]
@@ -164,9 +157,7 @@ class TexasHoldem:
 
     def _prompt(self, position: int, to_call: int) -> int:
         player = self.players[position]
-        others = [
-            i for i in range(len(self.players)) if not self.folds[i] and i != position
-        ]
+        others = [i for i in range(len(self.players)) if not self.folds[i] and i != position]
         biggest = max(others, key=lambda i: self.players[i].chips)
         max_bet = self.bets[biggest] - self.bets[position] + self.players[biggest].chips
         request = BetRequest(
@@ -188,12 +179,10 @@ class TexasHoldem:
         if contested and len(self.community) == 5:
             results = [best_hand(p.cards + self.community) for p in self.players]
             best = max(
-                value for (value, _), folded in zip(results, self.folds) if not folded
+                value for (value, _), folded in zip(results, self.folds, strict=True) if not folded
             )
             winners = [
-                i
-                for i, (value, _) in enumerate(results)
-                if not self.folds[i] and value == best
+                i for i, (value, _) in enumerate(results) if not self.folds[i] and value == best
             ]
             share = self.pot // len(winners)
             for i, player in enumerate(self.players):
@@ -206,8 +195,8 @@ class TexasHoldem:
                 else:
                     mark = ""
                 self.ui.message(
-                    f"[{player.name}] Hand: {' '.join(hand)} ({category(value).label}). "
-                    f"Chips: {player.chips}{mark}"
+                    f"[{player.name}] {value.entry.label.value}: "
+                    f"{' '.join(hand)}. Chips: {player.chips}{mark}"
                 )
         else:
             for i, player in enumerate(self.players):

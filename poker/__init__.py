@@ -4,7 +4,6 @@ from .cards import DECK, RANKS, SUITS, card_key, is_card
 from .equity import simulate_equity
 from .evaluation import HandCategory, HandValue, best_hand, category, evaluate, evaluate_five
 from .game import BetRequest, GameUI, TexasHoldem
-from .gui import PokerGUI
 from .player import Player
 from .ranges import PREFLOP_HANDS, PREFLOP_RANKING
 
@@ -21,7 +20,6 @@ __all__ = [
     "HandCategory",
     "HandValue",
     "Player",
-    "PokerGUI",
     "TexasHoldem",
     "best_hand",
     "card_key",

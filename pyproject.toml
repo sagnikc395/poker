@@ -9,10 +9,13 @@ description = "Texas Hold 'em: hand evaluation, equity simulation, and a hot-sea
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
-dependencies = ["pokerkit"]
+dependencies = [
+    "flet[all]>=0.86.1",
+    "pokerkit",
+]
 
 [project.scripts]
-poker = "poker.gui:main"
+poker = "ui.app:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.8"]

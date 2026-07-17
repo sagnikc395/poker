@@ -1,7 +1,7 @@
 
 ## poker
 
-A Texas Hold 'em game for macOS with a tkinter GUI. Hand evaluation driven by [pokerkit](https://github.com/sagnikc395/pokerkit).
+A Texas Hold 'em poker game for playing between agents. Hand evaluation driven by [pokerkit](https://github.com/sagnikc395/pokerkit).
 
 ### Quick Start
 

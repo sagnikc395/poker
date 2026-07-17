@@ -1,13 +1,12 @@
-<img src="/resources/icon.png" height=90 width=877>
 
-# Poker
+## poker
 
 A Texas Hold 'em game for macOS with a tkinter GUI. Hand evaluation driven by [pokerkit](https://github.com/sagnikc395/pokerkit).
 
 ### Quick Start
 
 ```
-python main.py
+uv run main.py
 ```
 
 Or with options:

@@ -1,4 +1,5 @@
 import random
+from contextvars import ContextVar
 
 from smolagents import tool
 
@@ -9,12 +10,15 @@ from poker.ranges import PREFLOP_RANKING
 
 from .game_state import GameState
 
-_current_state: GameState | None = None
+_current_state: ContextVar[GameState | None] = ContextVar("poker_agent_state", default=None)
 
 
 def set_state(state: GameState | None) -> None:
-    global _current_state
-    _current_state = state
+    _current_state.set(state)
+
+
+def _state() -> GameState | None:
+    return _current_state.get()
 
 
 def _get_preflop_class(cards: list[str]) -> str | None:
@@ -56,7 +60,7 @@ def get_hand_rank() -> str:
     Returns:
         A string describing your hand strength.
     """
-    state = _current_state
+    state = _state()
     if not state or not state.hero_cards:
         return "unknown"
 
@@ -83,7 +87,7 @@ def calculate_equity(num_opponents: int = 0) -> float:
     Returns:
         Your win probability as a float between 0.0 and 1.0.
     """
-    state = _current_state
+    state = _state()
     if not state or not state.hero_cards:
         return 0.0
 
@@ -94,8 +98,8 @@ def calculate_equity(num_opponents: int = 0) -> float:
         pocket=state.hero_cards,
         community=state.community_cards,
         n_players=num_opponents + 1,
-        n_simulations=1024,
-        rng=random.Random(),
+        n_simulations=state.equity_simulations,
+        rng=random.Random(state.seed),
     )
     return win_prob + tie_prob
 
@@ -111,7 +115,7 @@ def get_pot_odds() -> float:
     Returns:
         Pot odds ratio between 0.0 and 1.0.
     """
-    state = _current_state
+    state = _state()
     if not state or state.to_call == 0:
         return 0.0
     return state.to_call / (state.pot + state.to_call)
@@ -124,7 +128,7 @@ def get_position() -> str:
     Returns:
         One of: 'small blind', 'big blind', 'early', 'middle', 'late', 'dealer (button)'.
     """
-    state = _current_state
+    state = _state()
     if not state:
         return "unknown"
     return _position_label(state.hero_position, state.num_players)
@@ -140,7 +144,7 @@ def get_preflop_class() -> str:
     Returns:
         The pre-flop hand class string, or 'unknown'.
     """
-    state = _current_state
+    state = _state()
     if not state or not state.hero_cards:
         return "unknown"
     pfc = _get_preflop_class(state.hero_cards)
@@ -158,7 +162,7 @@ def get_game_context() -> str:
     Returns:
         A multi-line string with the full game context.
     """
-    state = _current_state
+    state = _state()
     if not state:
         return "No game state available."
 

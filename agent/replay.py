@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from .game_state import GameState
+from .game_state import DecisionMetrics, GameState
 
 
 @dataclass
@@ -11,6 +11,7 @@ class ReplayStep:
     action_type: str
     amount: int
     state: GameState | None = None
+    metrics: DecisionMetrics | None = None
 
 
 @dataclass

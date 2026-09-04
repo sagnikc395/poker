@@ -18,6 +18,23 @@ class Action:
 
 
 @dataclass
+class DecisionMetrics:
+    """Machine-readable diagnostics for one decision.
+
+    These fields make a hand useful as a quant research observation rather
+    than only as a UI transcript. Values are optional because human actions
+    do not have model latency or an LLM output.
+    """
+
+    equity: float | None = None
+    pot_odds: float | None = None
+    equity_edge: float | None = None
+    latency_ms: float | None = None
+    model_output: str | None = None
+    error: str | None = None
+
+
+@dataclass
 class GameState:
     hand_number: int = 0
     street: str = "pre-flop"
@@ -33,3 +50,6 @@ class GameState:
     community_cards: list[str] = field(default_factory=list)
     players: list[PlayerInfo] = field(default_factory=list)
     actions: list[Action] = field(default_factory=list)
+    decision_id: int = 0
+    seed: int | None = None
+    equity_simulations: int = 1024

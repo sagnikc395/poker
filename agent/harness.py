@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from collections.abc import Sequence
 
 from smolagents import CodeAgent
@@ -7,7 +8,7 @@ from smolagents import CodeAgent
 from poker.game import BetRequest
 
 from . import tools
-from .game_state import Action, GameState, PlayerInfo
+from .game_state import Action, DecisionMetrics, GameState, PlayerInfo
 from .prompts import BASE_SYSTEM_PROMPT, STYLE_INSTRUCTIONS
 from .replay import ReplayLog, ReplayStep
 
@@ -39,15 +40,26 @@ class AgentHarness:
             instructions=system_prompt,
             max_steps=max_steps,
         )
+        self.last_metrics = DecisionMetrics()
 
     def decide(self, state: GameState) -> int:
         """Build a task prompt and run the agent to get a bet decision."""
         tools.set_state(state)
         task = _build_task(state)
+        started = time.perf_counter()
         try:
             result = self.agent.run(task, reset=True)
-            return _parse_bet(result, state)
-        except Exception:
+            bet = _parse_bet(result, state)
+            self.last_metrics = DecisionMetrics(
+                latency_ms=(time.perf_counter() - started) * 1000,
+                model_output=str(result),
+            )
+            return bet
+        except Exception as exc:
+            self.last_metrics = DecisionMetrics(
+                latency_ms=(time.perf_counter() - started) * 1000,
+                error=type(exc).__name__,
+            )
             logger.exception("Agent %s failed, folding", self.name)
             return 0
 
@@ -128,16 +140,30 @@ class GameDirector:
         agents: list[AgentHarness],
         player_names: list[str],
         buy_in: int = 100,
+        human_players: list[str] | None = None,
+        human_ui=None,
+        observer_ui=None,
+        research_seed: int | None = None,
+        equity_simulations: int = 1024,
     ) -> None:
         if len(agents) > len(player_names):
             raise ValueError("More agents than players")
-        if len(agents) < 2:
-            raise ValueError("Need at least 2 agents")
+        human_players = human_players or []
+        if len(player_names) < 2:
+            raise ValueError("Need at least 2 players")
+        if set(human_players) - set(player_names):
+            raise ValueError("human_players must be present in player_names")
 
         self.agents = list(agents)
         self.replay = ReplayLog()
         self._player_names = list(player_names)
         self._agent_map = {a.name: a for a in agents}
+        self._human_players = set(human_players)
+        self._human_ui = human_ui
+        self._observer_ui = observer_ui
+        self._research_seed = research_seed
+        self._equity_simulations = equity_simulations
+        self._decision_id = 0
         self._hand_number = 0
         self._street = "pre-flop"
         self._community: list[str] = []
@@ -156,6 +182,8 @@ class GameDirector:
     # ── GameUI Protocol ──────────────────────────────────────────────
 
     def message(self, text: str) -> None:
+        if self._observer_ui is not None:
+            self._observer_ui.message(text)
         if text == "Pre-flop:":
             self._hand_number += 1
             self._street = "pre-flop"
@@ -191,21 +219,31 @@ class GameDirector:
             self._community.append(text.split(":", 1)[1].strip())
 
     def divider(self, heavy: bool = False) -> None:
-        pass
+        if self._observer_ui is not None:
+            self._observer_ui.divider(heavy)
 
     def request_bet(self, request: BetRequest) -> int:
         agent = self._agent_map.get(request.player.name)
-        if agent is None:
+        if agent is None and request.player.name not in self._human_players:
             raise RuntimeError(f"No agent configured for {request.player.name}")
+        if agent is None and self._human_ui is None:
+            raise RuntimeError(f"No human UI configured for {request.player.name}")
 
-        state = self._build_state(agent.name, request)
-        bet = agent.decide(state)
+        state = self._build_state(request.player.name, request)
+        bet = self._human_ui.request_bet(request) if agent is None else agent.decide(state)
 
         if not request.is_valid(bet):
             bet = 0
 
         if bet == 0 and request.to_call > 0:
             self._folds[request.player.name] = True
+
+        # The engine applies the returned amount immediately after this
+        # callback. Keep the director's observation ledger in sync now so the
+        # next participant sees current stacks and street commitments.
+        name = request.player.name
+        self._bets[name] = self._bets.get(name, 0) + bet
+        self._chips[name] = request.player.chips - bet
 
         action_type = _classify_action(bet, request.to_call)
         self._action_history.append(Action(request.player.name, action_type, bet, self._street))
@@ -218,6 +256,7 @@ class GameDirector:
                 action_type=action_type,
                 amount=bet,
                 state=state,
+                metrics=getattr(agent, "last_metrics", None) if agent is not None else None,
             )
         )
 
@@ -226,6 +265,7 @@ class GameDirector:
     # ── Internal ─────────────────────────────────────────────────────
 
     def _build_state(self, hero_name: str, request: BetRequest) -> GameState:
+        self._decision_id += 1
         return GameState(
             hand_number=self._hand_number,
             street=self._street,
@@ -248,6 +288,13 @@ class GameDirector:
                 for p in self._player_names
             ],
             actions=list(self._action_history),
+            decision_id=self._decision_id,
+            seed=(
+                self._research_seed + self._decision_id
+                if self._research_seed is not None
+                else None
+            ),
+            equity_simulations=self._equity_simulations,
         )
 
 
